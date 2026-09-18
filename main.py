@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 
 app = FastAPI(title="MandiFlow API")
 
+# CORS fix for Vercel
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,7 +20,8 @@ app.add_middleware(
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_db_connection():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    # sslmode require add pannirukom Supabase connection-kaga
+    return psycopg2.connect(DATABASE_URL, sslmode='require', cursor_factory=RealDictCursor)
 
 CROP_CAPS = {
     "Paddy": 100,
@@ -42,6 +44,10 @@ class BookingRequest(BaseModel):
     khasra_no: str
     commodity: str
     quantity_bags: int
+
+@app.get("/")
+def root():
+    return {"status": "online", "message": "MandiFlow Backend is running smoothly"}
 
 @app.post("/api/verify-land")
 def verify_land(req: LandVerifyRequest):
@@ -68,27 +74,33 @@ def book_slot(req: BookingRequest):
     token_id = f"FM-{random.randint(200, 999)}"
     arrival_window = "10:30 AM - 11:00 AM"
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO bookings (token_id, farmer_name, phone, aadhaar_hash, khasra_no, certified_acres, commodity, quantity_bags, arrival_window)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;
-        """,
-        (token_id, req.farmer_name, req.phone, "UIDAI-TOKEN-OK", req.khasra_no, acres, req.commodity, req.quantity_bags, arrival_window)
-    )
-    new_booking = cur.fetchone()
-    conn.commit()
-    cur.close()
-    conn.close()
-    return new_booking
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO bookings (token_id, farmer_name, phone, aadhaar_hash, khasra_no, certified_acres, commodity, quantity_bags, arrival_window)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;
+            """,
+            (token_id, req.farmer_name, req.phone, "UIDAI-TOKEN-OK", req.khasra_no, acres, req.commodity, req.quantity_bags, arrival_window)
+        )
+        new_booking = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        return new_booking
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/bookings")
 def get_bookings():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM bookings ORDER BY created_at DESC;")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return rows
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM bookings ORDER BY created_at DESC;")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return rows
+    except Exception as e:
+        return []
