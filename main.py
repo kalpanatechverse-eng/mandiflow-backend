@@ -17,7 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("postgresql://postgres:Kalpana2007%23@db.vbdgtkspegdozusjlchm.supabase.co:5432/postgres")
 
 def get_db_connection():
     # sslmode require add pannirukom Supabase connection-kaga
