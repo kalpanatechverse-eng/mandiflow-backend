@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
+# In-memory storage for live roster demo
+LIVE_BOOKINGS = []
 
 app = FastAPI(title="MandiFlow API")
 
@@ -74,7 +76,7 @@ def book_slot(req: BookingRequest):
     token_id = f"FM-{random.randint(200, 999)}"
     arrival_window = "10:30 AM - 11:00 AM"
 
-    return {
+    new_entry = {
         "token_id": token_id,
         "farmer_name": req.farmer_name,
         "commodity": req.commodity,
@@ -82,19 +84,15 @@ def book_slot(req: BookingRequest):
         "arrival_window": arrival_window,
         "status": "Approved / Anti-Recycling Active"
     }
-
     
+    # Save into live roster memory
+    LIVE_BOOKINGS.insert(0, new_entry)
+
+    return new_entry
+
+    @app.get("/api/bookings")
+def get_bookings():
+    return LIVE_BOOKINGS
        
 
-@app.get("/api/bookings")
-def get_bookings():
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM bookings ORDER BY created_at DESC;")
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        return rows
-    except Exception as e:
-        return []
+
