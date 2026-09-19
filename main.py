@@ -17,7 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATABASE_URL = os.getenv("postgresql://postgres:Kalpana2007%23@db.vbdgtkspegdozusjlchm.supabase.co:5432/postgres")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_db_connection():
     # sslmode require add pannirukom Supabase connection-kaga
@@ -74,23 +74,17 @@ def book_slot(req: BookingRequest):
     token_id = f"FM-{random.randint(200, 999)}"
     arrival_window = "10:30 AM - 11:00 AM"
 
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO bookings (token_id, farmer_name, phone, aadhaar_hash, khasra_no, certified_acres, commodity, quantity_bags, arrival_window)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;
-            """,
-            (token_id, req.farmer_name, req.phone, "UIDAI-TOKEN-OK", req.khasra_no, acres, req.commodity, req.quantity_bags, arrival_window)
-        )
-        new_booking = cur.fetchone()
-        conn.commit()
-        cur.close()
-        conn.close()
-        return new_booking
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "token_id": token_id,
+        "farmer_name": req.farmer_name,
+        "commodity": req.commodity,
+        "quantity_bags": req.quantity_bags,
+        "arrival_window": arrival_window,
+        "status": "Approved / Anti-Recycling Active"
+    }
+
+    
+       
 
 @app.get("/api/bookings")
 def get_bookings():
